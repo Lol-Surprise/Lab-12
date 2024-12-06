@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Додаток для вивчення слів</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to bottom, #e0f7fa, #ffffff);
+        }
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            flex-direction: column;
+        }
+        .card {
+            padding: 30px;
+            border-radius: 15px;
+            background: #ffffff;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 400px;
+        }
+        .card .word {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #00796b;
+        }
+        .card input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        .card button {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            color: #ffffff;
+            background: #00796b;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .card button:hover {
+            background: #004d40;
+        }
+        .stats {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+        .stats span {
+            margin: 0 10px;
+            font-weight: bold;
+            color: #00796b;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        }
+        .modal-content p {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        .modal-content button {
+            padding: 10px 20px;
+            font-size: 16px;
+            color: #ffffff;
+            background: #00796b;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .modal-content button:hover {
+            background: #004d40;
+        }
+        .level-select {
+            margin-bottom: 20px;
+        }
+        .level-select select {
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 10px;
+            border: 1px solid #ccc;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="level-select">
+            <label for="difficulty">Оберіть рівень складності: </label>
+            <select id="difficulty">
+                <option value="easy">Початковий</option>
+                <option value="medium">Середній</option>
+                <option value="hard">Високий</option>
+            </select>
+        </div>
+        <div class="card">
+            <div class="word" id="word"></div>
+            <input type="text" id="translation" placeholder="Введіть переклад">
+            <button id="check">Перевірити</button>
+            <div class="stats">
+                Крок: <span id="step">1</span>/10 | Вірно: <span id="correct">0</span> | Невірно: <span id="wrong">0</span>
+            </div>
+        </div>
+    </div>
+    <div class="modal" id="resultModal">
+        <div class="modal-content">
+            <p id="resultText"></p>
+            <button id="closeModal">Закрити</button>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            const wordsByLevel = {
+                easy: [
+                    {word: "always", translation: "завжди"},
+                    {word: "never", translation: "ніколи"},
+                    {word: "often", translation: "часто"},
+                    {word: "sometimes", translation: "іноді"},
+                    {word: "usually", translation: "зазвичай"}
+                ],
+                medium: [
+                    {word: "quickly", translation: "швидко"},
+                    {word: "slowly", translation: "повільно"},
+                    {word: "carefully", translation: "обережно"},
+                    {word: "easily", translation: "легко"},
+                    {word: "happily", translation: "щасливо"}
+                ],
+                hard: [
+                    {word: "nevertheless", translation: "тим не менш"},
+                    {word: "moreover", translation: "більше того"},
+                    {word: "furthermore", translation: "крім того"},
+                    {word: "throughout", translation: "протягом"},
+                    {word: "meanwhile", translation: "тим часом"}
+                ]
+            };
+
+            let currentWords = [];
+            let currentStep = 0;
+            let correctCount = 0;
+            let wrongCount = 0;
+            let currentWord = null;
+
+            function loadWord() {
+                if (currentStep < currentWords.length) {
+                    currentWord = currentWords.splice(Math.floor(Math.random() * currentWords.length), 1)[0];
+                    $("#word").text(currentWord.word);
+                    $("#step").text(currentStep + 1);
+                    $("#translation").val("").focus();
+                } else {
+                    showResult();
+                }
+            }
+
+            function showResult() {
+                const total = correctCount + wrongCount;
+                const level = correctCount / total * 100;
+                let levelText = "";
+
+                if (level >= 80) levelText = "Відмінно";
+                else if (level >= 50) levelText = "Добре";
+                else levelText = "Потрібно покращити";
+
+                $("#resultText").text(`Ви відповіли вірно на ${correctCount} питань і невірно на ${wrongCount}. Рівень: ${levelText}`);
+                $("#resultModal").fadeIn();
+            }
+
+            $("#check").click(function() {
+                const userTranslation = $("#translation").val().trim().toLowerCase();
+                if (userTranslation === currentWord.translation.toLowerCase()) {
+                    correctCount++;
+                    $("#correct").text(correctCount);
+                } else {
+                    wrongCount++;
+                    $("#wrong").text(wrongCount);
+                }
+                currentStep++;
+                loadWord();
+            });
+
+            $("#closeModal").click(function() {
+                $("#resultModal").fadeOut();
+            });
+
+            $("#difficulty").change(function() {
+                const selectedLevel = $(this).val();
+                currentWords = [...wordsByLevel[selectedLevel]];
+                currentStep = 0;
+                correctCount = 0;
+                wrongCount = 0;
+                $("#correct").text(correctCount);
+                $("#wrong").text(wrongCount);
+                $("#step").text(currentStep + 1);
+                loadWord();
+            });
+
+            // Initialize with easy level
+            $("#difficulty").val("easy").change();
+        });
+    </script>
+</body>
+</html>
